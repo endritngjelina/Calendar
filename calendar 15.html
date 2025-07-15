@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 3D Calendar & Event Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calendar-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcf7f, #4ecdc4, #45b7d1, #96ceb4);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .month-year {
+            font-size: 2rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #f0f2f5;
+            border-radius: 15px;
+            padding: 10px;
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 5px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 8px;
+        }
+
+        .day-cell {
+            background: white;
+            min-height: 100px;
+            border-radius: 12px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .day-cell:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .day-cell.today {
+            background: linear-gradient(135deg, #ff6b6b, #ffa726);
+            color: white;
+            font-weight: bold;
+        }
+
+        .day-cell.other-month {
+            background: #f8f9fa;
+            color: #adb5bd;
+        }
+
+        .day-cell.selected {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .day-number {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .event-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin: 1px;
+            display: inline-block;
+        }
+
+        .event-count {
+            background: #ff6b6b;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-weight: bold;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .panel h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(108, 117, 125, 0.3);
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.2);
+            border-color: #333;
+        }
+
+        .color-option.selected {
+            border-color: #333;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+        }
+
+        .event-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .event-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .event-time {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .event-description {
+            font-size: 0.85rem;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .event-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .priority-high { border-left-color: #ff6b6b; }
+        .priority-medium { border-left-color: #ffa726; }
+        .priority-low { border-left-color: #66bb6a; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f2f5;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #ff6b6b;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .toggle-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            padding-left: 45px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+
+        #three-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            z-index: 2000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #66bb6a, #4caf50);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #ff6b6b, #f44336);
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #42a5f5, #2196f3);
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .calendar-grid {
+                gap: 1px;
+            }
+            
+            .day-cell {
+                min-height: 80px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .calendar-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .month-year {
+                font-size: 1.5rem;
+            }
+            
+            .day-cell {
+                min-height: 60px;
+                padding: 5px;
+            }
+            
+            .day-number {
+                font-size: 0.9rem;
+            }
+        }
+
+        .loading {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 3000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="three-container"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-calendar-alt"></i> Advanced Calendar & Event Manager</h1>
+            <p>Organize your life with style and precision</p>
+        </div>
+
+        <div class="main-content">
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="nav-btn" id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+                    <div class="month-year" id="monthYear"></div>
+                    <button class="nav-btn" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+                </div>
+
+                <div class="view-toggle">
+                    <button class="toggle-btn active" data-view="month">Month</button>
+                    <button class="toggle-btn" data-view="week">Week</button>
+                    <button class="toggle-btn" data-view="day">Day</button>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="panel">
+                    <h3><i class="fas fa-plus-circle"></i> Add Event</h3>
+                    <form id="eventForm">
+                        <div class="form-group">
+                            <label for="eventTitle">Event Title</label>
+                            <input type="text" id="eventTitle" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventDate">Date</label>
+                            <input type="date" id="eventDate" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventTime">Time</label>
+                            <input type="time" id="eventTime" class="form-control">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventDescription">Description</label>
+                            <textarea id="eventDescription" class="form-control" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventPriority">Priority</label>
+                            <select id="eventPriority" class="form-control">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventCategory">Category</label>
+                            <select id="eventCategory" class="form-control">
+                                <option value="work">Work</option>
+                                <option value="personal">Personal</option>
+                                <option value="health">Health</option>
+                                <option value="social">Social</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Color</label>
+                            <div class="color-picker">
+                                <div class="color-option selected" data-color="#667eea" style="background: #667eea;"></div>
+                                <div class="color-option" data-color="#ff6b6b" style="background: #ff6b6b;"></div>
+                                <div class="color-option" data-color="#ffa726" style="background: #ffa726;"></div>
+                                <div class="color-option" data-color="#66bb6a" style="background: #66bb6a;"></div>
+                                <div class="color-option" data-color="#42a5f5" style="background: #42a5f5;"></div>
+                                <div class="color-option" data-color="#ab47bc" style="background: #ab47bc;"></div>
+                                <div class="color-option" data-color="#26c6da" style="background: #26c6da;"></div>
+                                <div class="color-option" data-color="#ffca28" style="background: #ffca28;"></div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Event
+                        </button>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <h3><i class="fas fa-list"></i> Today's Events</h3>
+                    <div class="search-box">
+                        <input type="text" id="searchEvents" class="form-control" placeholder="Search events...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="event-list" id="eventList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalEvents">0</div>
+                <div class="stat-label">Total Events</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="todayEvents">0</div>
+                <div class="stat-label">Today's Events</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="upcomingEvents">0</div>
+                <div class="stat-label">Upcoming Events</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="completedEvents">0</div>
+                <div class="stat-label">Completed Events</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Event Details</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentDate = new Date();
+        let selectedDate = null;
+        let events = [];
+        let currentView = 'month';
+        let selectedColor = '#667eea';
+        let editingEventId = null;
+
+        // Three.js setup for background animation
+        let scene, camera, renderer, particles;
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('three-container').appendChild(renderer.domElement);
+
+            // Create particle system
+            const particleCount = 100;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 20;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+
+                colors[i * 3] = Math.random();
+                colors[i * 3 + 1] = Math.random();
+                colors[i * 3 + 2] = Math.random();
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+
+            camera.position.z = 10;
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (particles) {
+                particles.rotation.x += 0.001;
+                particles.rotation.y += 0.002;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Initialize calendar
+        function init() {
+            initThreeJS();
+            loadEvents();
+            renderCalendar();
+            renderEventList();
+            updateStats();
+            
+            // Set today's date in form
+            document.getElementById('eventDate').value = formatDateForInput(new Date());
+            
+            // Event listeners
+            document.getElementById('prevMonth').addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                renderCalendar();
+            });
+            
+            document.getElementById('nextMonth').addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                renderCalendar();
+            });
+            
+            document.getElementById('eventForm').addEventListener('submit', handleEventSubmit);
+            document.getElementById('searchEvents').addEventListener('input', handleSearch);
+            
+            // Color picker
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    selectedColor = option.dataset.color;
+                });
+            });
+            
+            // View toggle
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentView = btn.dataset.view;
+                    renderCalendar();
+                });
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+        }
+
+        function handleKeyboardShortcuts(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'n':
+                        e.preventDefault();
+                        document.getElementById('eventTitle').focus();
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        document.getElementById('searchEvents').focus();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        document.getElementById('prevMonth').click();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        document.getElementById('nextMonth').click();
+                        break;
+                }
+            }
+        }
+
+        function renderCalendar() {
+            const monthYear = document.getElementById('monthYear');
+            const calendarGrid = document.getElementById('calendarGrid');
+            
+            monthYear.textContent = currentDate.toLocaleDateString('en-US', { 
+                month: 'long', 
+                year: 'numeric' 
+            });
+            
+            calendarGrid.innerHTML = '';
+            
+            // Day headers
+            const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayHeaders.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                calendarGrid.appendChild(dayHeader);
+            });
+            
+            // Calculate first day of month and number of days
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const today = new Date();
+            const todayStr = formatDateForInput(today);
+            
+            // Render calendar days
+            for (let i = 0; i < 42; i++) {
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
+                
+                const dayCell = document.createElement('div');
+                dayCell.className = 'day-cell';
+                
+                const isCurrentMonth = cellDate.getMonth() === currentDate.getMonth();
+                const isToday = formatDateForInput(cellDate) === todayStr;
+                const isSelected = selectedDate && formatDateForInput(cellDate) === selectedDate;
+                
+                if (!isCurrentMonth) {
+                    dayCell.classList.add('other-month');
+                }
+                if (isToday) {
+                    dayCell.classList.add('today');
+                }
+                if (isSelected) {
+                    dayCell.classList.add('selected');
+                }
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = cellDate.getDate();
+                dayCell.appendChild(dayNumber);
+                
+                // Add events for this day
+                const dayEvents = getEventsForDate(cellDate);
+                if (dayEvents.length > 0) {
+                    const eventCount = document.createElement('div');
+                    eventCount.className = 'event-count';
+                    eventCount.textContent = dayEvents.length;
+                    dayCell.appendChild(eventCount);
+                    
+                    dayEvents.slice(0, 3).forEach(event => {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'event-indicator';
+                        indicator.style.backgroundColor = event.color;
+                        indicator.title = event.title;
+                        dayCell.appendChild(indicator);
+                    });
+                }
+                
+                dayCell.addEventListener('click', () => {
+                    selectedDate = formatDateForInput(cellDate);
+                    document.getElementById('eventDate').value = selectedDate;
+                    renderCalendar();
+                    renderEventList();
+                    showDayEvents(cellDate);
+                });
+                
+                calendarGrid.appendChild(dayCell);
+            }
+        }
+
+        function getEventsForDate(date) {
+            const dateStr = formatDateForInput(date);
+            return events.filter(event => event.date === dateStr);
+        }
+
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function handleEventSubmit(e) {
+            e.preventDefault();
+            showLoading();
+            
+            setTimeout(() => {
+                const formData = new FormData(e.target);
+                const event = {
+                    id: editingEventId || Date.now().toString(),
+                    title: document.getElementById('eventTitle').value,
+                    date: document.getElementById('eventDate').value,
+                    time: document.getElementById('eventTime').value,
+                    description: document.getElementById('eventDescription').value,
+                    priority: document.getElementById('eventPriority').value,
+                    category: document.getElementById('eventCategory').value,
+                    color: selectedColor,
+                    completed: false,
+                    createdAt: editingEventId ? events.find(e => e.id === editingEventId).createdAt : new Date().toISOString()
+                };
+                
+                if (editingEventId) {
+                    const index = events.findIndex(e => e.id === editingEventId);
+                    events[index] = event;
+                    showNotification('Event updated successfully!', 'success');
+                    editingEventId = null;
+                } else {
+                    events.push(event);
+                    showNotification('Event added successfully!', 'success');
+                }
+                
+                saveEvents();
+                renderCalendar();
+                renderEventList();
+                updateStats();
+                e.target.reset();
+                document.getElementById('eventDate').value = formatDateForInput(new Date());
+                
+                // Reset color picker
+                document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                document.querySelector('.color-option[data-color="#667eea"]').classList.add('selected');
+                selectedColor = '#667eea';
+                
+                hideLoading();
+            }, 500);
+        }
+
+        function renderEventList() {
+            const eventList = document.getElementById('eventList');
+            const searchTerm = document.getElementById('searchEvents').value.toLowerCase();
+            
+            let filteredEvents = events;
+            
+            if (selectedDate) {
+                filteredEvents = events.filter(event => event.date === selectedDate);
+            } else {
+                const today = formatDateForInput(new Date());
+                filteredEvents = events.filter(event => event.date === today);
+            }
+            
+            if (searchTerm) {
+                filteredEvents = filteredEvents.filter(event => 
+                    event.title.toLowerCase().includes(searchTerm) ||
+                    event.description.toLowerCase().includes(searchTerm) ||
+                    event.category.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            eventList.innerHTML = '';
+            
+            if (filteredEvents.length === 0) {
+                eventList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                        <p>No events found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filteredEvents.sort((a, b) => {
+                if (a.date !== b.date) {
+                    return new Date(a.date) - new Date(b.date);
+                }
+                return (a.time || '00:00').localeCompare(b.time || '00:00');
+            });
+            
+            filteredEvents.forEach(event => {
+                const eventItem = document.createElement('div');
+                eventItem.className = `event-item priority-${event.priority}`;
+                eventItem.style.borderLeftColor = event.color;
+                
+                if (event.completed) {
+                    eventItem.style.opacity = '0.6';
+                    eventItem.style.textDecoration = 'line-through';
+                }
+                
+                eventItem.innerHTML = `
+                    <div class="event-title">${event.title}</div>
+                    <div class="event-time">
+                        <i class="fas fa-clock"></i> ${event.time || 'All day'} | 
+                        <i class="fas fa-calendar"></i> ${formatDateDisplay(event.date)} |
+                        <i class="fas fa-tag"></i> ${event.category}
+                    </div>
+                    ${event.description ? `<div class="event-description">${event.description}</div>` : ''}
+                    <div class="event-actions">
+                        <button class="btn btn-secondary btn-small" onclick="editEvent('${event.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn ${event.completed ? 'btn-secondary' : 'btn-primary'} btn-small" 
+                                onclick="toggleEventCompletion('${event.id}')">
+                            <i class="fas fa-${event.completed ? 'undo' : 'check'}"></i> 
+                            ${event.completed ? 'Undo' : 'Complete'}
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                `;
+                
+                eventItem.addEventListener('click', (e) => {
+                    if (!e.target.closest('.event-actions')) {
+                        showEventDetails(event);
+                    }
+                });
+                
+                eventList.appendChild(eventItem);
+            });
+        }
+
+        function formatDateDisplay(dateStr) {
+            return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function editEvent(eventId) {
+            const event = events.find(e => e.id === eventId);
+            if (!event) return;
+            
+            editingEventId = eventId;
+            
+            document.getElementById('eventTitle').value = event.title;
+            document.getElementById('eventDate').value = event.date;
+            document.getElementById('eventTime').value = event.time || '';
+            document.getElementById('eventDescription').value = event.description || '';
+            document.getElementById('eventPriority').value = event.priority;
+            document.getElementById('eventCategory').value = event.category;
+            
+            // Update color picker
+            document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+            document.querySelector(`[data-color="${event.color}"]`).classList.add('selected');
+            selectedColor = event.color;
+            
+            // Scroll to form
+            document.querySelector('.panel').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('eventTitle').focus();
+            
+            showNotification('Event loaded for editing', 'info');
+        }
+
+        function deleteEvent(eventId) {
+            if (confirm('Are you sure you want to delete this event?')) {
+                showLoading();
+                
+                setTimeout(() => {
+                    events = events.filter(e => e.id !== eventId);
+                    saveEvents();
+                    renderCalendar();
+                    renderEventList();
+                    updateStats();
+                    hideLoading();
+                    showNotification('Event deleted successfully!', 'success');
+                }, 300);
+            }
+        }
+
+        function toggleEventCompletion(eventId) {
+            const event = events.find(e => e.id === eventId);
+            if (!event) return;
+            
+            event.completed = !event.completed;
+            saveEvents();
+            renderEventList();
+            updateStats();
+            
+            showNotification(
+                event.completed ? 'Event marked as completed!' : 'Event marked as incomplete!',
+                'success'
+            );
+        }
+
+        function showDayEvents(date) {
+            const dayEvents = getEventsForDate(date);
+            const dateStr = formatDateDisplay(formatDateForInput(date));
+            
+            if (dayEvents.length === 0) {
+                showNotification(`No events on ${dateStr}`, 'info');
+                return;
+            }
+            
+            const modal = document.getElementById('eventModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.innerHTML = `<i class="fas fa-calendar-day"></i> Events for ${dateStr}`;
+            
+            modalBody.innerHTML = dayEvents.map(event => `
+                <div class="event-item priority-${event.priority}" style="border-left-color: ${event.color}; margin-bottom: 15px;">
+                    <div class="event-title">${event.title}</div>
+                    <div class="event-time">
+                        <i class="fas fa-clock"></i> ${event.time || 'All day'} | 
+                        <i class="fas fa-tag"></i> ${event.category} |
+                        <i class="fas fa-flag"></i> ${event.priority} priority
+                    </div>
+                    ${event.description ? `<div class="event-description">${event.description}</div>` : ''}
+                    <div class="event-actions">
+                        <button class="btn btn-secondary btn-small" onclick="editEvent('${event.id}'); closeModal();">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn ${event.completed ? 'btn-secondary' : 'btn-primary'} btn-small" 
+                                onclick="toggleEventCompletion('${event.id}'); closeModal();">
+                            <i class="fas fa-${event.completed ? 'undo' : 'check'}"></i> 
+                            ${event.completed ? 'Undo' : 'Complete'}
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}'); closeModal();">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            modal.style.display = 'flex';
+        }
+
+        function showEventDetails(event) {
+            const modal = document.getElementById('eventModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.innerHTML = `<i class="fas fa-info-circle"></i> Event Details`;
+            
+            modalBody.innerHTML = `
+                <div class="event-item priority-${event.priority}" style="border-left-color: ${event.color};">
+                    <div class="event-title" style="font-size: 1.2rem;">${event.title}</div>
+                    <div class="event-time" style="margin: 10px 0;">
+                        <i class="fas fa-calendar"></i> ${formatDateDisplay(event.date)} |
+                        <i class="fas fa-clock"></i> ${event.time || 'All day'}
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span style="background: ${event.color}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem;">
+                            <i class="fas fa-tag"></i> ${event.category}
+                        </span>
+                        <span style="background: ${getPriorityColor(event.priority)}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 5px;">
+                            <i class="fas fa-flag"></i> ${event.priority} priority
+                        </span>
+                        ${event.completed ? '<span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 5px;"><i class="fas fa-check"></i> Completed</span>' : ''}
+                    </div>
+                    ${event.description ? `<div class="event-description" style="margin: 15px 0; line-height: 1.6;">${event.description}</div>` : ''}
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 15px;">
+                        Created: ${new Date(event.createdAt).toLocaleString()}
+                    </div>
+                    <div class="event-actions" style="margin-top: 20px;">
+                        <button class="btn btn-secondary" onclick="editEvent('${event.id}'); closeModal();">
+                            <i class="fas fa-edit"></i> Edit Event
+                        </button>
+                        <button class="btn ${event.completed ? 'btn-secondary' : 'btn-primary'}" 
+                                onclick="toggleEventCompletion('${event.id}'); closeModal();">
+                            <i class="fas fa-${event.completed ? 'undo' : 'check'}"></i> 
+                            ${event.completed ? 'Mark Incomplete' : 'Mark Complete'}
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteEvent('${event.id}'); closeModal();">
+                            <i class="fas fa-trash"></i> Delete Event
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        function getPriorityColor(priority) {
+            switch(priority) {
+                case 'high': return '#ff6b6b';
+                case 'medium': return '#ffa726';
+                case 'low': return '#66bb6a';
+                default: return '#6c757d';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('eventModal').style.display = 'none';
+        }
+
+        function handleSearch() {
+            renderEventList();
+        }
+
+        function updateStats() {
+            const today = formatDateForInput(new Date());
+            const todayEvents = events.filter(e => e.date === today);
+            const upcomingEvents = events.filter(e => new Date(e.date) > new Date());
+            const completedEvents = events.filter(e => e.completed);
+            
+            document.getElementById('totalEvents').textContent = events.length;
+            document.getElementById('todayEvents').textContent = todayEvents.length;
+            document.getElementById('upcomingEvents').textContent = upcomingEvents.length;
+            document.getElementById('completedEvents').textContent = completedEvents.length;
+            
+            // Animate numbers
+            gsap.from('.stat-value', { duration: 1, scale: 0, ease: 'bounce.out', stagger: 0.1 });
+        }
+
+        function saveEvents() {
+            // Since we can't use localStorage, we'll keep events in memory
+            // In a real application, this would save to localStorage or a server
+        }
+
+        function loadEvents() {
+            // Load demo events for demonstration
+            events = [
+                {
+                    id: '1',
+                    title: 'Team Meeting',
+                    date: formatDateForInput(new Date()),
+                    time: '09:00',
+                    description: 'Weekly team sync and project updates',
+                    priority: 'high',
+                    category: 'work',
+                    color: '#667eea',
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: '2',
+                    title: 'Lunch with Sarah',
+                    date: formatDateForInput(new Date()),
+                    time: '12:30',
+                    description: 'Catch up over lunch at the new cafe',
+                    priority: 'medium',
+                    category: 'social',
+                    color: '#ff6b6b',
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: '3',
+                    title: 'Gym Workout',
+                    date: formatDateForInput(new Date(Date.now() + 86400000)),
+                    time: '18:00',
+                    description: 'Leg day workout routine',
+                    priority: 'medium',
+                    category: 'health',
+                    color: '#66bb6a',
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                }
+            ];
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Handle window resize for Three.js
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('eventModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
